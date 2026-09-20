@@ -1,12 +1,13 @@
 import base64
+import json
 import os
 from flask import Flask, jsonify, render_template, request
 from openai import OpenAI
 
 app = Flask(__name__)
 
-# Initialize the OpenAI client (it automatically picks up OPENAI_API_KEY from environment variables)
-client = OpenAI()
+# Initialize OpenAI client
+client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 
 @app.route("/")
@@ -23,53 +24,54 @@ def scan():
     if not image_data:
       return jsonify({"success": False, "error": "No image provided"}), 400
 
-    # Call OpenAI GPT-4o-mini Vision API
+    # Call OpenAI Vision API with JSON mode
     response = client.chat.completions.create(
         model="gpt-4o-mini",
+        response_format={"type": "json_object"},
         messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You are an expert card appraiser. Analyze the image and"
+                    " return a valid JSON object with keys: 'name' (string),"
+                    " 'set' (string), 'number' (string), 'raw_price' (float),"
+                    " and 'graded_prices' (object with 'PSA 8', 'PSA 9', 'PSA 10'"
+                    " as float values)."
+                ),
+            },
             {
                 "role": "user",
                 "content": [
                     {
                         "type": "text",
-                        "text": (
-                            "Analyze this collectible card image. Identify the"
-                            " card name, set name, card number, estimated raw"
-                            " market price (float), and estimated graded prices"
-                            " (PSA 8, 9, 10 as floats). Return your response"
-                            " strictly in valid JSON format with keys: name,"
-                            " set, number, raw_price, graded_prices."
-                        ),
+                        "text": "Identify this card and give market values.",
                     },
                     {"type": "image_url", "image_url": {"url": image_data}},
                 ],
-            }
+            },
         ],
-        max_tokens=300,
+        max_tokens=400,
     )
 
-    # Parse the AI response (for now we can return a structured dummy layout or parse the JSON from OpenAI)
-    # Let's make sure it communicates back to your frontend template:
-    # (Note: You can refine the AI parsing, but this gets the plumbing completely working!)
+    content = response.choices[0].message.content
+    parsed_data = json.loads(content)
 
-    # For testing the connection, let's pass a structured mock or real parsed response:
-    result = {
+    return jsonify({
         "success": True,
         "image_url": image_data,
-        "name": "Charizard (Example)",
-        "set": "Base Set",
-        "number": "4/102",
-        "raw_price": 150.00,
-        "graded_prices": {"PSA 8": 300.00, "PSA 9": 650.00, "PSA 10": 2500.00},
-    }
-
-    return jsonify(result)
+        "name": parsed_data.get("name", "Unknown Card"),
+        "set": parsed_data.get("set", "Unknown Set"),
+        "number": parsed_data.get("number", "N/A"),
+        "raw_price": float(parsed_data.get("raw_price", 0.0)),
+        "graded_prices": parsed_data.get(
+            "graded_prices", {"PSA 10": 0.0, "PSA 9": 0.0}
+        ),
+    })
 
   except Exception as e:
-    print(f"Error during scan: {e}")
+    print(f"CRITICAL SCAN ERROR: {str(e)}")
     return jsonify({"success": False, "error": str(e)}), 500
 
 
 if __name__ == "__main__":
   app.run(debug=True)
-  
