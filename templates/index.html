@@ -13,7 +13,7 @@
         <div class="bg-gray-900 p-3 rounded-xl border border-gray-800 text-center shadow-lg">
             <video id="video" autoplay playsinline class="w-full h-60 object-cover rounded-lg bg-black"></video>
             <canvas id="canvas" class="hidden"></canvas>
-            <button id="snap" class="mt-3 bg-green-500 hover:bg-green-600 text-gray-950 font-bold px-4 py-3 rounded-full w-full transition-all">
+            <button id="snap" class="mt-3 bg-green-500 hover:bg-green-600 text-gray-950 font-bold px-4 py-3 rounded-full w-full transition-all cursor-pointer">
                 📸 Take Picture & Scan
             </button>
         </div>
@@ -25,7 +25,7 @@
                     <h2 id="card-name" class="font-bold text-lg text-white"></h2>
                     <p id="card-set" class="text-sm text-gray-400"></p>
                     <div class="mt-2 inline-block bg-green-950 text-green-300 px-2.5 py-0.5 rounded text-sm font-semibold border border-green-800">
-                        Raw: $<span id="raw-price"></span>
+                        Raw: $<span id="raw-price">0.00</span>
                     </div>
                 </div>
             </div>
@@ -45,15 +45,27 @@
             .catch(err => { alert("Camera access denied or unavailable."); });
 
         document.getElementById('snap').addEventListener('click', async () => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
+            const snapButton = document.getElementById('snap');
+            snapButton.innerText = "Scanning...";
+            snapButton.disabled = true;
+
+            // Resize canvas to a manageable size to prevent connection drops
+            const maxWidth = 800;
+            const scaleSize = maxWidth / video.videoWidth;
+            canvas.width = maxWidth;
+            canvas.height = video.videoHeight * scaleSize;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Compress to JPEG with 0.7 quality
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
             
             try {
                 const response = await fetch('/scan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: canvas.toDataURL('image/jpeg') })
+                    body: JSON.stringify({ image: compressedDataUrl })
                 });
                 
                 const data = await response.json();
@@ -74,10 +86,15 @@
                             </div>
                         `;
                     }
+                } else {
+                    alert("Scan failed: " + data.error);
                 }
             } catch (e) {
                 console.error(e);
                 alert("Error connecting to server.");
+            } finally {
+                snapButton.innerText = "📸 Take Picture & Scan";
+                snapButton.disabled = false;
             }
         });
     </script>

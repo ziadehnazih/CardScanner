@@ -6,7 +6,7 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
-# Initialize OpenAI client
+# Initialize OpenAI client with explicit API key from environment variables
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
 
@@ -24,7 +24,7 @@ def scan():
     if not image_data:
       return jsonify({"success": False, "error": "No image provided"}), 400
 
-    # Call OpenAI Vision API with JSON mode
+    # Call OpenAI Vision API with JSON mode and a 30-second timeout
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         response_format={"type": "json_object"},
@@ -51,6 +51,7 @@ def scan():
             },
         ],
         max_tokens=400,
+        timeout=30.0,
     )
 
     content = response.choices[0].message.content
