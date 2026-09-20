@@ -6,8 +6,17 @@ from openai import OpenAI
 
 app = Flask(__name__)
 
+# Debug check to verify if Render successfully loaded your API key
+api_key_check = os.environ.get("OPENAI_API_KEY")
+print(
+    "API KEY LOADED?:",
+    bool(api_key_check),
+    "Length:",
+    len(api_key_check) if api_key_check else 0,
+)
+
 # Initialize OpenAI client with explicit API key from environment variables
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+client = OpenAI(api_key=api_key_check)
 
 
 @app.route("/")
