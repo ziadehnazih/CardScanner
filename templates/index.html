@@ -3,53 +3,293 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Card Scanner MVP</title>
+    <title>Card Scanner Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-gray-950 text-white p-6 font-sans">
-    <div class="max-w-md mx-auto space-y-4">
-        <h1 class="text-2xl font-bold text-center text-green-400">Card Value Scanner</h1>
-        
-        <div class="bg-gray-900 p-3 rounded-xl border border-gray-800 text-center shadow-lg">
-            <video id="video" autoplay playsinline class="w-full h-60 object-cover rounded-lg bg-black"></video>
-            <canvas id="canvas" class="hidden"></canvas>
-            <button id="snap" class="mt-3 bg-green-500 hover:bg-green-600 text-gray-950 font-bold px-4 py-3 rounded-full w-full transition-all cursor-pointer">
-                📸 Take Picture & Scan
-            </button>
-        </div>
+<body class="bg-gray-950 text-white font-sans pb-24">
 
-        <div id="results" class="hidden bg-gray-900 p-4 rounded-xl border border-gray-800 space-y-3">
-            <div class="flex items-center space-x-3">
-                <img id="card-img" class="w-20 h-28 object-cover rounded border border-gray-700" alt="Card" />
+    <!-- Top Account Bar -->
+    <header class="bg-gray-900 border-b border-gray-800 p-4 flex justify-between items-center max-w-md mx-auto">
+        <h1 class="font-bold text-green-400 text-lg">CardValue Pro</h1>
+        <div id="auth-section">
+            <div id="logged-out" class="flex gap-2">
+                <input type="text" id="username-input" placeholder="Enter username..." class="bg-gray-800 text-sm px-3 py-1.5 rounded border border-gray-700 focus:outline-none focus:border-green-500 w-32" />
+                <button onclick="loginUser()" class="bg-green-500 hover:bg-green-600 text-gray-950 text-sm font-bold px-3 py-1.5 rounded">Sign In</button>
+            </div>
+            <div id="logged-in" class="hidden flex items-center gap-3">
+                <span class="text-sm text-gray-300">Hi, <b id="user-display" class="text-green-400"></b></span>
+                <button onclick="logoutUser()" class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-400 px-2.5 py-1 rounded border border-gray-700">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto p-4">
+        
+        <!-- TAB 1: SCANNER VIEW -->
+        <div id="tab-scanner" class="space-y-4">
+            <div class="bg-gray-900 p-3 rounded-xl border border-gray-800 shadow-lg space-y-3">
+                <!-- Collection Selector for Scans -->
                 <div>
-                    <h2 id="card-name" class="font-bold text-lg text-white"></h2>
-                    <p id="card-set" class="text-sm text-gray-400"></p>
-                    <div class="mt-2 inline-block bg-green-950 text-green-300 px-2.5 py-0.5 rounded text-sm font-semibold border border-green-800">
-                        Raw: $<span id="raw-price">0.00</span>
+                    <label class="block text-xs font-semibold text-gray-400 mb-1">SAVE SCAN TO COLLECTION:</label>
+                    <select id="scan-collection-select" class="w-full bg-gray-800 border border-gray-700 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-green-500">
+                        <option value="">-- Sign in & create a collection first --</option>
+                    </select>
+                </div>
+
+                <div class="relative overflow-hidden rounded-lg bg-black">
+                    <video id="video" autoplay playsinline class="w-full h-60 object-cover"></video>
+                    <canvas id="canvas" class="hidden"></canvas>
+                </div>
+
+                <button id="snap" class="bg-green-500 hover:bg-green-600 text-gray-950 font-bold px-4 py-3 rounded-xl w-full transition-all cursor-pointer shadow-lg">
+                    📸 Take Picture & Scan Card
+                </button>
+            </div>
+
+            <!-- Scan Results Card -->
+            <div id="results" class="hidden bg-gray-900 p-4 rounded-xl border border-gray-800 space-y-3 shadow-lg">
+                <div class="flex items-center space-x-3">
+                    <img id="card-img" class="w-20 h-28 object-cover rounded border border-gray-700 shadow" alt="Card" />
+                    <div>
+                        <h2 id="card-name" class="font-bold text-lg text-white"></h2>
+                        <p id="card-set" class="text-sm text-gray-400"></p>
+                        <div class="mt-2 inline-block bg-green-950 text-green-300 px-2.5 py-0.5 rounded text-sm font-semibold border border-green-800">
+                            Raw Value: $<span id="raw-price">0.00</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="border-t border-gray-800 pt-3">
-                <p class="text-xs text-gray-400 mb-2 font-semibold tracking-wider">ESTIMATED GRADED VALUES</p>
-                <div id="graded-grid" class="grid grid-cols-2 gap-2 text-center"></div>
+                <div class="border-t border-gray-800 pt-3">
+                    <p class="text-xs text-gray-400 mb-2 font-semibold tracking-wider">ESTIMATED GRADED VALUES</p>
+                    <div id="graded-grid" class="grid grid-cols-2 gap-2 text-center"></div>
+                </div>
+                
+                <div class="border-t border-gray-800 pt-3">
+                    <a id="ebay-link" href="#" target="_blank" class="block bg-blue-600 hover:bg-blue-700 text-center text-white font-bold py-2.5 px-4 rounded-lg text-sm transition-all shadow">
+                        🔍 Check Sold Prices on eBay
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
+
+        <!-- TAB 2: COLLECTIONS & PORTFOLIO VIEW -->
+        <div id="tab-collections" class="hidden space-y-6">
+            <div class="bg-gray-900 p-4 rounded-xl border border-gray-800 shadow-lg space-y-4">
+                <h2 class="font-bold text-lg text-green-400">Portfolio & Historical Value</h2>
+                <!-- Overall Portfolio 10-Year Graph -->
+                <div class="bg-gray-950 p-3 rounded-lg border border-gray-800">
+                    <canvas id="portfolioChart" class="w-full h-40"></canvas>
+                </div>
+            </div>
+
+            <!-- Create New Collection -->
+            <div class="bg-gray-900 p-4 rounded-xl border border-gray-800 shadow-lg flex gap-2">
+                <input type="text" id="new-col-name" placeholder="New collection name..." class="flex-1 bg-gray-800 text-sm px-3 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-green-500" />
+                <button onclick="createCollection()" class="bg-green-500 hover:bg-green-600 text-gray-950 text-sm font-bold px-4 py-2 rounded-lg">Create</button>
+            </div>
+
+            <!-- Collections List container -->
+            <div id="collections-container" class="space-y-4">
+                <p class="text-center text-gray-500 text-sm py-4">Sign in to view your collections.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 p-3 flex justify-around max-w-md mx-auto shadow-2xl">
+        <button onclick="switchTab('scanner')" id="nav-scanner" class="flex flex-col items-center text-green-400 font-bold text-xs space-y-1">
+            <span class="text-xl">📷</span>
+            <span>Scanner</span>
+        </button>
+        <button onclick="switchTab('collections')" id="nav-collections" class="flex flex-col items-center text-gray-400 font-bold text-xs space-y-1">
+            <span class="text-xl">📁</span>
+            <span>Collections</span>
+        </button>
+    </nav>
 
     <script>
+        let portfolioChartInstance = null;
+
+        // Camera Feed Initialization
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        
         navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
             .then(stream => { video.srcObject = stream; })
-            .catch(err => { alert("Camera access denied or unavailable."); });
+            .catch(err => { console.log("Camera unavailable or blocked."); });
 
+        function switchTab(tab) {
+            if (tab === 'scanner') {
+                document.getElementById('tab-scanner').classList.remove('hidden');
+                document.getElementById('tab-collections').classList.add('hidden');
+                document.getElementById('nav-scanner').className = "flex flex-col items-center text-green-400 font-bold text-xs space-y-1";
+                document.getElementById('nav-collections').className = "flex flex-col items-center text-gray-400 font-bold text-xs space-y-1";
+            } else {
+                document.getElementById('tab-scanner').classList.add('hidden');
+                document.getElementById('tab-collections').classList.remove('hidden');
+                document.getElementById('nav-collections').className = "flex flex-col items-center text-green-400 font-bold text-xs space-y-1";
+                document.getElementById('nav-scanner').className = "flex flex-col items-center text-gray-400 font-bold text-xs space-y-1";
+                loadCollectionsData();
+            }
+        }
+
+        async function loginUser() {
+            const username = document.getElementById('username-input').value.trim();
+            if (!username) return alert("Please enter a username.");
+            
+            const res = await fetch('/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
+            });
+            const data = await res.json();
+            if (data.success) {
+                updateAuthUI(data.username);
+                loadCollectionsData();
+            } else {
+                alert("Login failed");
+            }
+        }
+
+        async function logoutUser() {
+            await fetch('/logout');
+            updateAuthUI(null);
+        }
+
+        function updateAuthUI(username) {
+            if (username) {
+                document.getElementById('logged-out').classList.add('hidden');
+                document.getElementById('logged-in').classList.remove('hidden');
+                document.getElementById('user-display').innerText = username;
+            } else {
+                document.getElementById('logged-out').classList.remove('hidden');
+                document.getElementById('logged-in').classList.add('hidden');
+                document.getElementById('scan-collection-select').innerHTML = '<option value="">-- Sign in to save scans --</option>';
+                document.getElementById('collections-container').innerHTML = '<p class="text-center text-gray-500 text-sm py-4">Sign in to view your collections.</p>';
+            }
+        }
+
+        async function loadCollectionsData() {
+            try {
+                const res = await fetch('/api/collections');
+                const data = await res.json();
+                if (data.success) {
+                    // Update dropdown on scanner tab
+                    const select = document.getElementById('scan-collection-select');
+                    select.innerHTML = '';
+                    
+                    // Update collections tab content
+                    const container = document.getElementById('collections-container');
+                    container.innerHTML = '';
+
+                    let totalPortfolioValue = 0;
+
+                    data.collections.forEach(col => {
+                        totalPortfolioValue += col.total_value;
+                        
+                        // Populate dropdown
+                        select.innerHTML += `<option value="${col.id}">${col.name} ($${col.total_value.toFixed(2)})</option>`;
+                        
+                        // Build collection UI card
+                        let cardsHtml = '';
+                        if (col.cards.length === 0) {
+                            cardsHtml = '<p class="text-xs text-gray-500 italic p-2">No cards in this collection yet.</p>';
+                        } else {
+                            col.cards.forEach(card => {
+                                cardsHtml += `
+                                    <div class="flex items-center justify-between bg-gray-950 p-2 rounded border border-gray-800 text-sm">
+                                        <div class="flex items-center gap-2">
+                                            <img src="${card.image_url}" class="w-10 h-14 object-cover rounded" />
+                                            <div>
+                                                <div class="font-bold">${card.name}</div>
+                                                <div class="text-xs text-gray-400">${card.set} #${card.number}</div>
+                                            </div>
+                                        </div>
+                                        <div class="text-green-400 font-bold">$${card.raw_price.toFixed(2)}</div>
+                                    </div>
+                                `;
+                            });
+                        }
+
+                        container.innerHTML += `
+                            <div class="bg-gray-900 p-4 rounded-xl border border-gray-800 space-y-3 shadow-lg">
+                                <div class="flex justify-between items-center border-b border-gray-800 pb-2">
+                                    <h3 class="font-bold text-white">${col.name}</h3>
+                                    <span class="text-green-400 font-bold text-sm">Total: $${col.total_value.toFixed(2)}</span>
+                                </div>
+                                <div class="space-y-2 max-h-60 overflow-y-auto">
+                                    ${cardsHtml}
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    renderPortfolioChart(totalPortfolioValue);
+                }
+            } catch (e) {
+                console.error("Could not load collections", e);
+            }
+        }
+
+        function renderPortfolioChart(currentTotal) {
+            const ctx = document.getElementById('portfolioChart').getContext('2d');
+            if (portfolioChartInstance) portfolioChartInstance.destroy();
+
+            // Generate a sample 10-year curve scaling up to the current total
+            const years = ['2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024', '2025', '2026'];
+            const factor = [0.4, 0.45, 0.5, 0.6, 0.75, 0.85, 0.9, 0.95, 0.98, 1.0];
+            const dataPoints = factor.map(f => +(currentTotal * f).toFixed(2));
+
+            portfolioChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'Portfolio Value ($)',
+                        data: dataPoints,
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#1f2937' } },
+                        y: { ticks: { color: '#9ca3af', font: { size: 10 } }, grid: { color: '#1f2937' } }
+                    }
+                }
+            });
+        }
+
+        async function createCollection() {
+            const name = document.getElementById('new-col-name').value.trim();
+            if (!name) return alert("Enter a collection name.");
+            
+            const res = await fetch('/api/collections/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('new-col-name').value = '';
+                loadCollectionsData();
+            } else {
+                alert(data.error);
+            }
+        }
+
+        // Snap and Scan Trigger
         document.getElementById('snap').addEventListener('click', async () => {
             const snapButton = document.getElementById('snap');
-            snapButton.innerText = "Scanning...";
+            const collectionId = document.getElementById('scan-collection-select').value;
+            
+            snapButton.innerText = "Scanning Card...";
             snapButton.disabled = true;
 
-            // Resize canvas to a manageable size to prevent connection drops
             const maxWidth = 800;
             const scaleSize = maxWidth / video.videoWidth;
             canvas.width = maxWidth;
@@ -57,15 +297,13 @@
             
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            // Compress to JPEG with 0.7 quality
             const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
             
             try {
                 const response = await fetch('/scan', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: compressedDataUrl })
+                    body: JSON.stringify({ image: compressedDataUrl, collection_id: collectionId })
                 });
                 
                 const data = await response.json();
@@ -75,6 +313,9 @@
                     document.getElementById('card-name').innerText = data.name;
                     document.getElementById('card-set').innerText = `${data.set} #${data.number}`;
                     document.getElementById('raw-price').innerText = data.raw_price.toFixed(2);
+                    
+                    const query = encodeURIComponent(`${data.name} ${data.set} ${data.number}`);
+                    document.getElementById('ebay-link').href = `https://www.ebay.com/sch/i.html?_nkw=${query}&_sacat=0&LH_Sold=1&LH_Complete=1`;
                     
                     const grid = document.getElementById('graded-grid');
                     grid.innerHTML = '';
@@ -93,7 +334,7 @@
                 console.error(e);
                 alert("Error connecting to server.");
             } finally {
-                snapButton.innerText = "📸 Take Picture & Scan";
+                snapButton.innerText = "📸 Take Picture & Scan Card";
                 snapButton.disabled = false;
             }
         });
